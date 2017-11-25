@@ -1,0 +1,157 @@
+#include "shader.h"
+
+Shader::Shader(const char* vertPath, const char* fragPath, const char* geoPath)
+{
+	std::string vertCode;
+	std::string fragCode;
+	std::string geoCode;
+	std::ifstream vertFile;
+	std::ifstream fragFile;
+	std::ifstream geoFile;
+
+	//for throwing exceptions
+	vertFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+	fragFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+	geoFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+
+	try 
+	{
+		vertFile.open(vertPath);
+		fragFile.open(fragPath);
+		std::stringstream vertStream, fragStream;
+
+		vertStream << vertFile.rdbuf();
+		fragStream << fragFile.rdbuf();
+
+		vertFile.close();
+		fragFile.close();
+
+		vertCode = vertStream.str();
+		fragCode = fragStream.str();
+
+		if (geoPath != nullptr)
+		{
+			geoFile.open(geoPath);
+			std::stringstream geoStream;
+			geoStream << geoFile.rdbuf();
+			geoFile.close();
+			geoCode = geoStream.str();
+		}
+	}
+	catch(std::ifstream::failure e)
+	{
+		std::cout << "ERROR::SHADER::READING_FILE" << std::endl;
+	}
+
+	const char* vCode = vertCode.c_str();
+	const char* fCode = fragCode.c_str();
+
+	GLuint vert, frag;
+	int success;
+	char log[512];
+
+	vert = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vert, 1, &vCode, NULL);
+	glCompileShader(vert);
+	checkCompileErrors(vert, "VERTEX");
+
+	frag = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(frag, 1, &fCode, NULL);
+	glCompileShader(frag);
+	checkCompileErrors(frag, "FRAGMENT");
+
+	GLuint geo;
+	if (geoPath != nullptr)
+	{
+		const char* gCode = geoCode.c_str();
+		geo = glCreateShader(geo);
+		glShaderSource(geo, 1, &gCode, NULL);
+		glCompileShader(geo);
+		checkCompileErrors(geo, "GEOMETRY");
+	}
+
+	id = glCreateProgram();
+	glAttachShader(id, vert);
+	glAttachShader(id, frag);
+	if (geoPath != nullptr)
+		glAttachShader(id, geo);
+	glLinkProgram(id);
+	checkCompileErrors(id, "PROGRAM");
+
+	glDeleteShader(vert);
+	glDeleteShader(frag);
+	if (geoPath != nullptr)
+		glDeleteShader(geo);
+
+}
+
+void Shader::use()
+{
+	glUseProgram(id);
+}
+
+void Shader::setUniformb(const std::string &name, bool value)
+{
+	GLuint loc = getLoc(name);
+	glUniform1i(loc, (int)value);
+}
+
+void Shader::setUniform1i(const std::string &name, int value)
+{
+	GLuint loc = getLoc(name);
+	glUniform1i(loc, value);
+}
+
+void Shader::setUniform1f(const std::string &name, float value)
+{
+	GLuint loc = getLoc(name);
+	glUniform1f(loc, value);
+}
+
+void Shader::setUniform2f(const std::string &name, float v1, float v2)
+{
+	GLuint loc = getLoc(name);
+	glUniform2f(loc, v1, v2);
+}
+
+void Shader::setUniform3f(const std::string &name, float v1, float v2, float v3)
+{
+	GLuint loc = getLoc(name);
+	glUniform3f(loc, v1, v2, v3);
+}
+
+GLuint Shader::getLoc(const std::string &name) 
+{
+	std::map<std::string, GLuint>::iterator iter = locationsMap.find(name);
+	if (iter != locationsMap.end())
+		return iter->second;
+
+	GLuint loc = glGetUniformLocation(id, name.c_str());
+	locationsMap.insert(std::pair<std::string, GLuint>(name, loc));
+	return loc;
+}
+
+void Shader::checkCompileErrors(GLuint shader, std::string type)
+{
+	GLint success;
+	GLchar log[1024];
+
+	if (type != "PROGRAM")
+	{
+		glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+		if (!success)
+		{
+			glGetShaderInfoLog(shader, 1024, NULL, log);
+			std::cout << "ERROR::SHADER_COMPILATION_ERROR::" << type << "\n" << log << "\n -- --------------------- --" << std::endl;
+		}
+	}
+	else
+	{
+		glGetProgramiv(shader, GL_LINK_STATUS, &success);
+		if (!success)
+		{
+			glGetProgramInfoLog(shader, 1024, NULL, log);
+			std::cout << "ERROR::PROGRAM_LINKING_ERROR::" << type << "\n" << log << "\n -- --------------------- --" << std::endl;
+		}
+	}
+}
