@@ -32,7 +32,8 @@ int main()
 	}
 
 	//Shader shader("Shaders/vertex.vs", "Shaders/fragment.frag");
-	Shader shader("Shaders/vertex.vs", "Shaders/fractionalBrownianMotion.frag");
+	//Shader shader("Shaders/vertex.vs", "Shaders/fractionalBrownianMotion.frag");
+	Shader shader("Shaders/vertex.vs", "Shaders/raymarchingSDFs.frag");
 
 	// Full ViewPort Rectangle
 	float vertices[] =
