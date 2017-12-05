@@ -78,6 +78,11 @@ Shader::Shader(const char* vertPath, const char* fragPath, const char* geoPath)
 	glLinkProgram(id);
 	checkCompileErrors(id, "PROGRAM");
 
+	glDetachShader(id, vert);
+	glDetachShader(id, frag);
+	if (geoPath != nullptr)
+		glDetachShader(id, geo);
+
 	glDeleteShader(vert);
 	glDeleteShader(frag);
 	if (geoPath != nullptr)
@@ -154,4 +159,105 @@ void Shader::checkCompileErrors(GLuint shader, std::string type)
 			std::cout << "ERROR::PROGRAM_LINKING_ERROR::" << type << "\n" << log << "\n -- --------------------- --" << std::endl;
 		}
 	}
+}
+
+void Shader::deleteShader() 
+{
+	glUseProgram(0);
+	glDeleteProgram(id);
+	locationsMap.clear();
+}
+
+void Shader::reCompile(const char* vertPath, const char* fragPath, const char* geoPath)
+{
+	std::string vertCode;
+	std::string fragCode;
+	std::string geoCode;
+	std::ifstream vertFile;
+	std::ifstream fragFile;
+	std::ifstream geoFile;
+
+	//for throwing exceptions
+	vertFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+	fragFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+	geoFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+
+	try
+	{
+		vertFile.open(vertPath);
+		fragFile.open(fragPath);
+		std::stringstream vertStream, fragStream;
+
+		vertStream << vertFile.rdbuf();
+		fragStream << fragFile.rdbuf();
+
+		vertFile.close();
+		fragFile.close();
+
+		vertCode = vertStream.str();
+		fragCode = fragStream.str();
+
+		if (geoPath != nullptr)
+		{
+			geoFile.open(geoPath);
+			std::stringstream geoStream;
+			geoStream << geoFile.rdbuf();
+			geoFile.close();
+			geoCode = geoStream.str();
+		}
+	}
+	catch (std::ifstream::failure e)
+	{
+		std::cout << "ERROR::SHADER::READING_FILE" << std::endl;
+	}
+
+	const char* vCode = vertCode.c_str();
+	const char* fCode = fragCode.c_str();
+
+	GLuint vert, frag;
+	int success;
+	char log[512];
+
+	vert = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vert, 1, &vCode, NULL);
+	glCompileShader(vert);
+	checkCompileErrors(vert, "VERTEX");
+
+	frag = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(frag, 1, &fCode, NULL);
+	glCompileShader(frag);
+	checkCompileErrors(frag, "FRAGMENT");
+
+	GLuint geo;
+	if (geoPath != nullptr)
+	{
+		const char* gCode = geoCode.c_str();
+		geo = glCreateShader(geo);
+		glShaderSource(geo, 1, &gCode, NULL);
+		glCompileShader(geo);
+		checkCompileErrors(geo, "GEOMETRY");
+	}
+
+	GLuint newid = glCreateProgram();
+	glAttachShader(newid, vert);
+	glAttachShader(newid, frag);
+	if (geoPath != nullptr)
+		glAttachShader(newid, geo);
+	glLinkProgram(newid);
+	checkCompileErrors(newid, "PROGRAM");
+
+	glDetachShader(newid, vert);
+	glDetachShader(newid, frag);
+	if (geoPath != nullptr)
+		glDetachShader(newid, geo);
+
+	glDeleteShader(vert);
+	glDeleteShader(frag);
+	if (geoPath != nullptr)
+		glDeleteShader(geo);
+
+
+	deleteShader();
+	id = newid;
+
 }

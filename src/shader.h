@@ -22,6 +22,9 @@ public:
 	void setUniform2f(const std::string &name, float v1, float v2);
 	void setUniform3f(const std::string &name, float v1, float v2, float v3);
 
+	void deleteShader();
+	void Shader::reCompile(const char* vertPath, const char* fragPath, const char* geoPath = nullptr);
+
 private:
 	std::map<std::string, GLuint> locationsMap;
 	GLuint getLoc(const std::string &name);

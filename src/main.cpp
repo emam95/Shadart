@@ -4,16 +4,22 @@
 #include <string>
 #include <filesystem>
 #include <vector>
+#include <thread>
 
 #include "shader.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
-std::string intro();
+std::string mainMenu();
+void render(Shader& shader, GLFWwindow* window, const GLuint& VAO);
+void handleConsoleOperation(bool& quit, bool& run, Shader& s);
 
 int main()
 {
-	std::string fragPath = intro();
+	bool run = true;
+	std::string fragPath = mainMenu();
+	if (fragPath == "")
+		return 0;
 
 	// initialize glfw
 	glfwInit();
@@ -74,30 +80,23 @@ int main()
 
 	glBindVertexArray(0);
 
+	bool quit = false;
+	std::thread console(handleConsoleOperation, std::ref(quit), std::ref(run), std::ref(shader));
+
 	// render loop
-	while (!glfwWindowShouldClose(window))
+	while (!glfwWindowShouldClose(window) && !quit)
 	{
 		processInput(window);
 
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
+		if (!run)
+			continue;
 
-		shader.use();
-
-		float time = glfwGetTime();
-		int wwidth, wheight;
-		glfwGetWindowSize(window, &wwidth, &wheight);
-
-		shader.setUniform1f("uTime", time);
-		shader.setUniform2f("uResolution", wwidth, wheight);
-
-		glBindVertexArray(VAO);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-		glBindVertexArray(0);
-
-		glfwSwapBuffers(window);
+		render(shader, window, VAO);
+		
 		glfwPollEvents();
 	}
+
+	console.join();
 
 	glfwTerminate();
 	return 0;
@@ -114,15 +113,19 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 	glViewport(0, 0, width, height);
 }
 
-std::string intro()
+std::string mainMenu()
 {
 	std::cout << "Welcome to Shadart" << std::endl;
 	std::cout << "Choose an option below:" << std::endl;
 	std::cout << "A. Create New Shader" << std::endl;
 	std::cout << "B. Load Shader" << std::endl;
+	std::cout << "C. Quit" << std::endl;
 
 	char option[2];
 	std::cin.getline(option, 2);
+
+	while(option[0] != 'A' && option[0] != 'a' && option[0] != 'B' && option[0] != 'b' && option[0] != 'C' && option[0] != 'c')
+		std::cin.getline(option, 2);
 
 	switch (option[0])
 	{
@@ -150,7 +153,68 @@ std::string intro()
 			return files[index];
 			break;
 		}
+		case 'C':
+		case 'c':
+			return "";
 	}
-
 	return "Shaders/fragment.frag";
+}
+
+void render(Shader& shader, GLFWwindow* window, const GLuint& VAO)
+{
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	shader.use();
+
+	float time = glfwGetTime();
+	int wwidth, wheight;
+	glfwGetWindowSize(window, &wwidth, &wheight);
+
+	shader.setUniform1f("uTime", time);
+	shader.setUniform2f("uResolution", wwidth, wheight);
+
+	glBindVertexArray(VAO);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+	glBindVertexArray(0);
+
+	glfwSwapBuffers(window);
+}
+
+void handleConsoleOperation(bool& q, bool& run, Shader& s)
+{
+	while (!q)
+	{
+		std::cout << "Controls:" << std::endl;
+		std::cout << "press p to play/pause" << std::endl;
+		std::cout << "press m to go back to main menu" << std::endl;
+
+		char option[2];
+		std::cin.getline(option, 2);
+
+		switch (option[0])
+		{
+		case 'p':
+		case 'P':
+			run = !run; // invert
+			break;
+		case 'm':
+		case 'M':
+		{
+			run = false;
+			const std::string fragPath = mainMenu();
+			if (fragPath == "")
+			{
+				q = true;
+				break;
+			}
+			s.reCompile("Shaders/vertex.vs", fragPath.c_str());
+			run = true;
+			break;
+		}
+		default:
+			// no op
+			break;
+		}
+	}
 }
