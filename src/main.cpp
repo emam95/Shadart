@@ -1,14 +1,20 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <string>
+#include <filesystem>
+#include <vector>
 
 #include "shader.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
+std::string intro();
 
 int main()
 {
+	std::string fragPath = intro();
+
 	// initialize glfw
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -31,10 +37,7 @@ int main()
 		std::cout << "Failed to initialize GLAD" << std::endl;
 	}
 
-	//Shader shader("Shaders/vertex.vs", "Shaders/fragment.frag");
-	//Shader shader("Shaders/vertex.vs", "Shaders/fractionalBrownianMotion.frag");
-	//Shader shader("Shaders/vertex.vs", "Shaders/raymarchingSDFs.frag");
-	Shader shader("Shaders/vertex.vs", "Shaders/raymarchingCSG.frag");
+	Shader shader("Shaders/vertex.vs", fragPath.c_str());
 
 	// Full ViewPort Rectangle
 	float vertices[] =
@@ -109,4 +112,45 @@ void processInput(GLFWwindow* window)
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
 	glViewport(0, 0, width, height);
+}
+
+std::string intro()
+{
+	std::cout << "Welcome to Shadart" << std::endl;
+	std::cout << "Choose an option below:" << std::endl;
+	std::cout << "A. Create New Shader" << std::endl;
+	std::cout << "B. Load Shader" << std::endl;
+
+	char option[2];
+	std::cin.getline(option, 2);
+
+	switch (option[0])
+	{
+		case 'A':
+		case 'a':
+			break;
+		case 'B':
+		case 'b':
+		{
+			std::vector<std::string> files;
+			std::string path = "Shaders/";
+			int index = 0;
+			for (auto &p : std::experimental::filesystem::directory_iterator(path)) //needs C++17
+			{
+				std::ostringstream oss;
+				oss << p;
+				std::string dir = oss.str();
+				if (dir.substr(8) == "vertex.vs")
+					continue;
+				files.push_back(dir);
+				std::cout << index++ << ". " << dir.substr(8) << std::endl;
+			}
+			std::cout << "Choose a shader:" << std::endl;
+			std::cin >> index;
+			return files[index];
+			break;
+		}
+	}
+
+	return "Shaders/fragment.frag";
 }
