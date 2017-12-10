@@ -1,5 +1,11 @@
+#version 330 core
+
 uniform float uTime;
 uniform vec2 uResolution;
+
+out vec4 fragCol;
+
+// Check the amazing article in https://thebookofshaders.com/13/
 
 float random (in vec2 _st) { 
     return fract(sin(dot(_st.xy,
@@ -70,6 +76,6 @@ void main( void ) {
                 vec3(0.666667,1,1),
                 clamp(length(r.x),0.0,1.0));
 
-    gl_FragColor = vec4((f*f*f+.6*f*f+.5*f)*color,1.);
+    fragCol = vec4((f*f*f+.6*f*f+.5*f)*color,1.);
 
 }

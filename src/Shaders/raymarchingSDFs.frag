@@ -15,10 +15,18 @@ const float DIST_BIAS = 0.8;
 // The sign of the returned value determines wether the point is inside or outside the surface
 // For a collection of common SDFs check this great article http://iquilezles.org/www/articles/distfunctions/distfunctions.htm
 
+// For a sphere
+// sqrt(p.x^2 + p.y^2 + p.z^2) - r ,returns a -ve number if inside, +ve outside, 0 on surface
+
 float sphereSDF(vec3 p, float r)
 {
 	return length(p) - r;
 }
+
+// For a cube
+// if all components of d are -ve, p is inside
+// if p is inside the distance will be min(max(d.x, max(d.y, d.z)), 0.0) [-ve or 0]
+// if p is outside the distance will be length(max(d, 0.0)) [+ve or 0]
 
 float cubeSDF(vec3 p, vec3 s)
 {
@@ -34,12 +42,12 @@ vec2 sceneSDF(vec3 p)
 
 	translate = vec3(0.0, 0.0, 1.0);
 	float dist2 = cubeSDF(p - translate, vec3(0.5));
-	float mat2 = 2.0;
+	float matId2 = 2.0;
 
 	if(dist2 < dist)
 	{
 		dist = dist2;
-		matId = mat2;
+		matId = matId2;
 	}
 
 	return vec2(dist, matId);
@@ -70,9 +78,8 @@ vec2 rayMarch(vec3 org, vec3 dir, float start, float end)
 	return vec2(end, 0.0);
 }
 
-// For most lighting models we need to calculate surface normals, to get the normals for a SDF we use 
-// the gradient as our surface normal. instead of calculating gradient using calculus we can approximate
-// the derivatives by sampling points around the surface and calculating the change.
+// For most lighting models we need to calculate surface normals, to get the normals for a SDF I used 
+// the gradient as a surface normal. Here is the finite difference form for the approximation.
 
 vec3 approxNormal(vec3 p)
 {
