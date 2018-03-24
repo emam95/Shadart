@@ -26,6 +26,7 @@ int main()
 
 	handleConsoleOperation(quit, run, fragPath);
 
+	console.join();
 	
 	return 0;
 }
