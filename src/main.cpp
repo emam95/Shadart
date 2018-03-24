@@ -1,49 +1,57 @@
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
+#include "SGGraph\sggraph.h"
 #include <iostream>
 #include <string>
 #include <filesystem>
 #include <vector>
 #include <thread>
 
-#include "shader.h"
+using namespace SGGraph;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
 std::string mainMenu();
-void render(Shader& shader, GLFWwindow* window, const GLuint& VAO);
-void handleConsoleOperation(bool& quit, bool& run, Shader& s);
+void render(std::string& shader, bool& run, bool& quit);
+void renderShader(Shader* shader, GLFWwindow* window, const GLuint& VAO);
+void handleConsoleOperation(bool& quit, bool& run, std::string& fragPath);
 
 int main()
 {
 	bool run = true;
+	bool quit = false;
 	std::string fragPath = mainMenu();
 	if (fragPath == "")
 		return 0;
 
-	// initialize glfw
-	glfwInit();
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	std::thread console(render, std::ref(fragPath), std::ref(run), std::ref(quit));
 
-	 GLFWwindow* window = glfwCreateWindow(800, 800, "Shadart", NULL, NULL);
-	if (window == NULL)
-	{
-		std::cout << "Failed to create GLFW window" << std::endl;
-		glfwTerminate();
-	}
-	glfwMakeContextCurrent(window);
+	handleConsoleOperation(quit, run, fragPath);
+
+	
+	return 0;
+}
+
+void processInput(GLFWwindow* window)
+{
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+		glfwSetWindowShouldClose(window, true);
+}
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+	glViewport(0, 0, width, height);
+}
+
+void render(std::string& fragPath, bool& run, bool& quit)
+{
+	GLRenderer& renderer = GLRenderer::createRenderer();
+
+	GLWindow window = renderer.openWindow(800, 800, "shadart");
 
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-	// initialize glad
-	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-	{
-		std::cout << "Failed to initialize GLAD" << std::endl;
-	}
+	Shader* shader = new Shader("Shaders/vertex.vs", fragPath.c_str());
 
-	Shader shader("Shaders/vertex.vs", fragPath.c_str());
+	std::string oldPath = fragPath;
 
 	// Full ViewPort Rectangle
 	float vertices[] =
@@ -80,9 +88,6 @@ int main()
 
 	glBindVertexArray(0);
 
-	bool quit = false;
-	std::thread console(handleConsoleOperation, std::ref(quit), std::ref(run), std::ref(shader));
-
 	// render loop
 	while (!glfwWindowShouldClose(window) && !quit)
 	{
@@ -91,26 +96,21 @@ int main()
 		if (!run)
 			continue;
 
-		render(shader, window, VAO);
-		
+		if (fragPath != oldPath)
+		{
+			shader->deleteShader();
+			delete(shader);
+			shader = new Shader("Shaders/vertex.vs", fragPath.c_str());
+		}
+
+		renderShader(shader, window, VAO);
+
 		glfwPollEvents();
 	}
 
-	console.join();
+	quit = true;
 
 	glfwTerminate();
-	return 0;
-}
-
-void processInput(GLFWwindow* window)
-{
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, true);
-}
-
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
-	glViewport(0, 0, width, height);
 }
 
 std::string mainMenu()
@@ -160,19 +160,19 @@ std::string mainMenu()
 	return "Shaders/fragment.frag";
 }
 
-void render(Shader& shader, GLFWwindow* window, const GLuint& VAO)
+void renderShader(Shader* shader, GLFWwindow* window, const GLuint& VAO)
 {
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 
-	shader.use();
+	shader->use();
 
 	float time = glfwGetTime();
 	int wwidth, wheight;
 	glfwGetWindowSize(window, &wwidth, &wheight);
 
-	shader.setUniform1f("uTime", time);
-	shader.setUniform2f("uResolution", wwidth, wheight);
+	shader->setUniform1f("uTime", time);
+	shader->setUniform2f("uResolution", wwidth, wheight);
 
 	glBindVertexArray(VAO);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -181,7 +181,7 @@ void render(Shader& shader, GLFWwindow* window, const GLuint& VAO)
 	glfwSwapBuffers(window);
 }
 
-void handleConsoleOperation(bool& q, bool& run, Shader& s)
+void handleConsoleOperation(bool& q, bool& run, std::string& frag)
 {
 	while (!q)
 	{
@@ -208,7 +208,7 @@ void handleConsoleOperation(bool& q, bool& run, Shader& s)
 				q = true;
 				break;
 			}
-			s.reCompile("Shaders/vertex.vs", fragPath.c_str());
+			frag = fragPath;
 			run = true;
 			break;
 		}
