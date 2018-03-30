@@ -8,11 +8,11 @@
 using namespace SGGraph;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void processInput(GLFWwindow* window);
+void processInput(GLFWwindow* window, bool& run);
 std::string mainMenu();
 void render(std::string& shader, bool& run, bool& quit);
 void renderShader(Shader* shader, GLFWwindow* window, const GLuint& VAO);
-void handleConsoleOperation(bool& quit, bool& run, std::string& fragPath);
+void handleConsoleOperation(bool& quit, std::string& fragPath);
 
 int main()
 {
@@ -24,17 +24,28 @@ int main()
 
 	std::thread console(render, std::ref(fragPath), std::ref(run), std::ref(quit));
 
-	handleConsoleOperation(quit, run, fragPath);
+	handleConsoleOperation(quit, fragPath);
 
 	console.join();
 	
 	return 0;
 }
 
-void processInput(GLFWwindow* window)
+void processInput(GLFWwindow* window, bool& run)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
+
+	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+		glfwSetWindowShouldClose(window, true);
+	
+	static int prevP = GLFW_RELEASE;
+	int currentP = glfwGetKey(window, GLFW_KEY_P);
+	if (currentP == GLFW_RELEASE && prevP == GLFW_PRESS)
+		run = !run;
+	
+	prevP = currentP;
+
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -92,7 +103,8 @@ void render(std::string& fragPath, bool& run, bool& quit)
 	// render loop
 	while (!glfwWindowShouldClose(window) && !quit)
 	{
-		processInput(window);
+		processInput(window, run);
+		glfwPollEvents();
 
 		if (!run)
 			continue;
@@ -102,11 +114,10 @@ void render(std::string& fragPath, bool& run, bool& quit)
 			shader->deleteShader();
 			delete(shader);
 			shader = new Shader("Shaders/vertex.vs", fragPath.c_str());
+			oldPath = fragPath;
 		}
 
 		renderShader(shader, window, VAO);
-
-		glfwPollEvents();
 	}
 
 	quit = true;
@@ -182,40 +193,16 @@ void renderShader(Shader* shader, GLFWwindow* window, const GLuint& VAO)
 	glfwSwapBuffers(window);
 }
 
-void handleConsoleOperation(bool& q, bool& run, std::string& frag)
+void handleConsoleOperation(bool& q, std::string& frag)
 {
 	while (!q)
 	{
-		std::cout << "Controls:" << std::endl;
-		std::cout << "press p to play/pause" << std::endl;
-		std::cout << "press m to go back to main menu" << std::endl;
-
-		char option[2];
-		std::cin.getline(option, 2);
-
-		switch (option[0])
+		const std::string fragPath = mainMenu();
+		if (fragPath == "")
 		{
-		case 'p':
-		case 'P':
-			run = !run; // invert
-			break;
-		case 'm':
-		case 'M':
-		{
-			run = false;
-			const std::string fragPath = mainMenu();
-			if (fragPath == "")
-			{
-				q = true;
-				break;
-			}
-			frag = fragPath;
-			run = true;
+			q = true;
 			break;
 		}
-		default:
-			// no op
-			break;
-		}
+		frag = fragPath;
 	}
 }

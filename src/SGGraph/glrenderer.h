@@ -27,8 +27,6 @@ namespace SGGraph
 		GLRenderer(const GLRenderer&) = delete;
 		void operator=(const GLRenderer&) = delete;
 
-		~GLRenderer();
-
 		// Functions
 		GLWindow openWindow(const int width, const int height, const char* name = "window");
 		GLWindow getCurrentWindow();
@@ -40,6 +38,7 @@ namespace SGGraph
 
 	private:
 		GLRenderer();
+		~GLRenderer();
 
 		std::vector<GLWindow> windows;
 		GLWindow currentWindow;
