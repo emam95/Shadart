@@ -4,8 +4,11 @@
 #include <filesystem>
 #include <vector>
 #include <thread>
+//#include <algorithm>
 
 using namespace SGGraph;
+
+std::string dir;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window, bool& run);
@@ -14,11 +17,24 @@ void render(std::string& shader, bool& run, bool& quit);
 void renderShader(Shader* shader, GLFWwindow* window, const GLuint& VAO);
 void handleConsoleOperation(bool& quit, std::string& fragPath);
 
-int main()
+int main(int argc, char* argv[])
 {
+	dir = argv[0];
+	dir = dir.substr(0, dir.size() - 11);
+
+	std::cout << dir << std::endl;
+
 	bool run = true;
 	bool quit = false;
-	std::string fragPath = mainMenu();
+	std::string fragPath;
+	if (argc == 2)
+	{
+		fragPath = argv[1];
+		std::replace(fragPath.begin(), fragPath.end(), '\\', '/');
+	}
+	else
+		fragPath = mainMenu();
+
 	if (fragPath == "")
 		return 0;
 
@@ -61,7 +77,7 @@ void render(std::string& fragPath, bool& run, bool& quit)
 
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-	Shader* shader = new Shader("Shaders/vertex.vs", fragPath.c_str());
+	Shader* shader = new Shader(dir + "Shaders/vertex.vs", fragPath);
 
 	std::string oldPath = fragPath;
 
@@ -113,7 +129,7 @@ void render(std::string& fragPath, bool& run, bool& quit)
 		{
 			shader->deleteShader();
 			delete(shader);
-			shader = new Shader("Shaders/vertex.vs", fragPath.c_str());
+			shader = new Shader(dir + "Shaders/vertex.vs", fragPath);
 			oldPath = fragPath;
 		}
 
@@ -148,17 +164,17 @@ std::string mainMenu()
 		case 'b':
 		{
 			std::vector<std::string> files;
-			std::string path = "Shaders/";
+			std::string path = dir + "Shaders/";
 			int index = 0;
 			for (auto &p : std::experimental::filesystem::directory_iterator(path)) //needs C++17
 			{
 				std::ostringstream oss;
 				oss << p;
-				std::string dir = oss.str();
-				if (dir.substr(8) == "vertex.vs")
+				std::string localdir = oss.str();
+				if (localdir.substr(dir.size() + 8) == "vertex.vs")
 					continue;
-				files.push_back(dir);
-				std::cout << index++ << ". " << dir.substr(8) << std::endl;
+				files.push_back(localdir);
+				std::cout << index++ << ". " << localdir.substr(dir.size() + 8) << std::endl;
 			}
 			std::cout << "Choose a shader:" << std::endl;
 			std::cin >> index;

@@ -8,24 +8,16 @@
 
 using namespace SGGraph;
 
-Shader::Shader(const char* vertPath, const char* fragPath, const char* geoPath)
+Shader::Shader(const std::string& vertPath, const std::string& fragPath, const std::string& geoPath)
 {
 	std::string vertCode;
 	std::string fragCode;
 	std::string geoCode;
-	std::ifstream vertFile;
-	std::ifstream fragFile;
-	std::ifstream geoFile;
+	std::ifstream vertFile(vertPath);
+	std::ifstream fragFile(fragPath);
 
-	//for throwing exceptions
-	vertFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-	fragFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-	geoFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-
-	try 
+	if(vertFile.is_open() && fragFile.is_open())
 	{
-		vertFile.open(vertPath);
-		fragFile.open(fragPath);
 		std::stringstream vertStream, fragStream;
 
 		vertStream << vertFile.rdbuf();
@@ -37,16 +29,16 @@ Shader::Shader(const char* vertPath, const char* fragPath, const char* geoPath)
 		vertCode = vertStream.str();
 		fragCode = fragStream.str();
 
-		if (geoPath != nullptr)
+		if (geoPath == "")
 		{
-			geoFile.open(geoPath);
+			std::ifstream geoFile(geoPath);
 			std::stringstream geoStream;
 			geoStream << geoFile.rdbuf();
 			geoFile.close();
 			geoCode = geoStream.str();
 		}
 	}
-	catch(std::ifstream::failure e)
+	else
 	{
 		std::cout << "ERROR::SHADER::READING_FILE" << std::endl;
 	}
@@ -69,7 +61,7 @@ Shader::Shader(const char* vertPath, const char* fragPath, const char* geoPath)
 	checkCompileErrors(frag, "FRAGMENT");
 
 	GLuint geo;
-	if (geoPath != nullptr)
+	if (!geoPath.empty())
 	{
 		const char* gCode = geoCode.c_str();
 		geo = glCreateShader(geo);
@@ -81,14 +73,14 @@ Shader::Shader(const char* vertPath, const char* fragPath, const char* geoPath)
 	id = glCreateProgram();
 	glAttachShader(id, vert);
 	glAttachShader(id, frag);
-	if (geoPath != nullptr)
+	if (!geoPath.empty())
 		glAttachShader(id, geo);
 	glLinkProgram(id);
 	checkCompileErrors(id, "PROGRAM");
 
 	glDeleteShader(vert);
 	glDeleteShader(frag);
-	if (geoPath != nullptr)
+	if (!geoPath.empty())
 		glDeleteShader(geo);
 
 }

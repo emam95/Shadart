@@ -23,7 +23,7 @@ namespace SGGraph
 	public:
 		GLuint id;
 
-		Shader(const char* vertPath, const char* fragPath, const char* geoPath = nullptr);
+		Shader(const std::string& vertPath, const std::string& fragPath, const std::string& geoPath = "");
 
 		void use();
 		void setUniformb(const std::string &name, bool value);
